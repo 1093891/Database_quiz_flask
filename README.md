@@ -21,3 +21,20 @@ A simple web-based quiz application built with Flask for the backend and plain H
 - **Robust Backend**: Enhanced error handling for question parsing
 
 ## Project Structure
+
+![image](https://github.com/user-attachments/assets/67043fd0-91a4-471b-bc04-ee40d14dcc76)
+
+
+
+## Setup and Installation
+
+### Prerequisites
+- Python 3.7+
+- pip
+
+### Local Setup
+
+1. Clone the Repository:
+```bash
+git clone https://github.com/1093891/Database_quiz_flask.git
+cd Database_quiz_flask
