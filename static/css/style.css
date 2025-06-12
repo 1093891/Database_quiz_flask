@@ -1,0 +1,35 @@
+/* Custom styles can go here if needed */
+/* Most styling is handled by Tailwind CSS classes directly in HTML and JS */
+
+/* Example for drag-and-drop feedback, if not fully covered by Tailwind */
+.draggable-item.dragging {
+    opacity: 0.5;
+    border: 2px dashed #4299e1; /* blue-500 */
+}
+
+/* Icons for results page */
+.icon-correct {
+    display: inline-block;
+    vertical-align: middle;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    color: #10b981; /* Tailwind green-500 */
+}
+
+.icon-wrong {
+    display: inline-block;
+    vertical-align: middle;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    color: #ef4444; /* Tailwind red-500 */
+}
