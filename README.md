@@ -1,7 +1,8 @@
 ﻿# Database_quiz_flask
 ## Database Concepts Quiz Application
 
-![Quiz Application Screenshot](./screenshot.png)
+![image](https://github.com/user-attachments/assets/d1288eff-3cd0-4d57-9006-a848453cb701)
+
 
 A simple web-based quiz application built with Flask for the backend and plain HTML, CSS (with Tailwind CSS), and JavaScript for the frontend. Test your knowledge on database concepts including Normalization, Relational Algebra, Database Security, Distributed DBMS, and Transaction Management.
 
