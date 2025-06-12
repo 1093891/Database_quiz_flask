@@ -56,6 +56,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return svg;
     }
 
+    // Function to render math using KaTeX
+    function renderMath(element) {
+        // Check if renderMathInElement is defined (meaning KaTeX script has loaded)
+        if (typeof renderMathInElement !== 'undefined') {
+            renderMathInElement(element, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ]
+            });
+        } else {
+            console.warn("KaTeX auto-render script not loaded. Math equations might not display correctly.");
+        }
+    }
+
 
     // --- State Management and Rendering Functions ---
 
@@ -69,6 +86,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (showResults) {
             renderResults();
         }
+        // After rendering content, trigger KaTeX to render math
+        // This needs to be called after the HTML elements are in the DOM
+        renderMath(appRoot);
     }
 
     function renderStartScreen() {
@@ -76,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         startScreenDiv.className = 'text-center';
         startScreenDiv.innerHTML = `
             <p class="text-lg mb-6 text-gray-700">
-                Test your knowledge on Relational Algebra, Database Security, and Normalization!
+                Test your knowledge on Linear Algebra concepts from the course materials!
             </p>
             <div class="mb-6">
                 <label for="numQuestions" class="block text-lg font-medium text-gray-700 mb-2">
@@ -145,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const questionText = document.createElement('p');
         questionText.className = 'text-2xl font-bold mb-4 text-gray-900 leading-relaxed';
-        questionText.textContent = currentQuestion.question;
+        questionText.textContent = currentQuestion.question; // KaTeX will render the math directly from this textContent
         quizDiv.appendChild(questionText);
 
         const answerArea = document.createElement('div');
@@ -252,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
         question.draggableItems.forEach(item => {
             const draggableDiv = document.createElement('div');
             draggableDiv.id = `draggable-${item.id}`;
-            draggableDiv.textContent = item.text;
+            draggableDiv.textContent = item.text; // Text content, KaTeX will render if math
             draggableDiv.draggable = true;
             draggableDiv.className = `draggable cursor-grab p-3 w-full max-w-xs text-center bg-blue-100 border-2 border-blue-400 rounded-md shadow-sm font-medium text-blue-800 transition-all duration-200 ${
                 Object.keys(currentMapping).includes(item.id) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-200'
@@ -274,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
         question.droppableTargets.forEach(target => {
             const droppableDiv = document.createElement('div');
             droppableDiv.id = `droppable-${target.id}`;
-            droppableDiv.textContent = target.text;
+            droppableDiv.textContent = target.text; // Text content, KaTeX will render if math
             droppableDiv.className = `droppable relative p-3 w-full max-w-xs text-center border-2 rounded-md shadow-sm transition-all duration-200 min-h-[50px] flex items-center justify-center
                 ${Object.values(currentMapping).includes(target.id) ? 'bg-green-100 border-green-400 mapped' : 'bg-gray-100 border-gray-300 hover:bg-gray-200'}
             `;
@@ -418,15 +438,6 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsDiv.appendChild(retakeButtonContainer);
 
         appRoot.appendChild(resultsDiv);
-    }
-
-    function handleRetakeQuiz() {
-        quizStarted = false;
-        showResults = false;
-        userAnswers = [];
-        currentQuestions = [];
-        currentQuestionIndex = 0;
-        renderApp();
     }
 
     function evaluateQuiz() {
