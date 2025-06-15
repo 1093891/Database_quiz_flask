@@ -3,11 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Database Concepts Quiz</title>
-    <!-- icon -->
-        <link rel="icon" href="{{ url_for('static', filename='images/quiz_icon.png') }}" type="image/x-icon">
+    <title>Java Concepts Quiz</title>
+    <!-- Favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" xintegrity="sha384-Gvr6VxK3g5J/79jJ5bY+hJj0YfKzN5Yg0Qj+P6h0m1lB/fA3p6QnC1R9jD6lC/Jt" crossorigin="anonymous">
+    <!-- KaTeX JS -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" xintegrity="sha384-Gvr6VxK3g5J/79jJ5bY+hJj0YfKzN5Yg0Qj+P6h0m1lB/fA3p6QnC1R9jD6lC/Jt" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" xintegrity="sha384-jK8+gK6+P7tF21k+D3mK0/g0n6c2x+M4J8w+f4m6+mN0x2N/e5G+h4p8j+Q5" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script>
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <!-- Inter Font -->
@@ -19,10 +24,15 @@
         /* Basic styles for drag-and-drop */
         .draggable {
             cursor: grab;
+            user-select: none; /* Prevent text selection during drag */
         }
         .droppable {
             border: 2px dashed #a0aec0; /* Tailwind gray-400 */
             min-height: 80px; /* Ensure drop zone is visible */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap; /* Allow content to wrap */
         }
         .droppable.drag-over {
             border-color: #4299e1; /* Tailwind blue-500 */
@@ -32,13 +42,33 @@
             background-color: #d1fae5; /* Tailwind green-100 */
             border-color: #10b981; /* Tailwind green-500 */
         }
+        /* KaTeX specific styling to ensure inline math doesn't break lines awkwardly */
+        .katex {
+            white-space: normal;
+        }
+        .katex-display {
+            overflow-x: auto; /* Allow horizontal scrolling for large block equations */
+        }
+        /* Styling for pre/code blocks */
+        pre {
+            background-color: #f7fafc; /* gray-100 */
+            border-left: 4px solid #4299e1; /* blue-500 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto; /* For wide code lines */
+        }
+        code {
+            font-family: 'Fira Mono', 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
+            font-size: 0.875rem; /* text-sm */
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center p-4 text-gray-800">
     <div id="quiz-container" class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-4xl border border-blue-200">
         <!-- Content will be rendered by main.js -->
         <h1 class="text-4xl font-extrabold text-center text-blue-800 mb-8 tracking-tight">
-            Database Concepts Quiz
+            Java Concepts Quiz
         </h1>
         <div id="app-root" class="text-center">
             <!-- JavaScript will render the quiz content here -->

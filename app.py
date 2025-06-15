@@ -1,7 +1,7 @@
 import csv
 from flask import Flask, render_template, jsonify, request
 import os
-import random  # Import random for shuffling
+import random
 
 app = Flask(__name__)
 
@@ -9,16 +9,16 @@ app = Flask(__name__)
 # Function to parse questions from CSV
 def load_questions_from_csv(file_path):
     questions = []
-    # Using 'utf-8' encoding is standard. If you face issues, try 'latin-1' or specify the correct encoding.
     with open(file_path, 'r', encoding='utf-8') as csvfile:
         reader = csv.DictReader(csvfile)
-        for i, row in enumerate(reader):  # Add enumeration to get line number for debugging
+        for i, row in enumerate(reader):
             line_num = i + 2  # +1 for 0-index, +1 for header row
             try:
                 # Basic validation for essential fields before processing
-                if not all(key in row for key in ['id', 'type', 'difficulty', 'question', 'explanation']):
-                    raise KeyError(
-                        "Missing one or more required columns (id, type, difficulty, question, explanation).")
+                required_cols = ['id', 'type', 'difficulty', 'question', 'explanation']
+                if not all(key in row and row[key] is not None for key in required_cols):
+                    missing_keys = [key for key in required_cols if key not in row or row[key] is None]
+                    raise KeyError(f"Missing or None value for required columns: {', '.join(missing_keys)}.")
 
                 question_data = {
                     "id": row['id'],
@@ -34,11 +34,10 @@ def load_questions_from_csv(file_path):
                     question_data['options'] = row['options'].split('|')
                     try:
                         question_data['correctAnswerIndex'] = int(row['correct_answer'])
-                    except ValueError:
-                        raise ValueError("MCQ 'correct_answer' is not a valid integer index.")
+                    except (ValueError, KeyError):
+                        raise ValueError("MCQ 'correct_answer' is not a valid integer index or is missing.")
                 elif row['type'] == 'true_false':
-                    # 'correct_answer' can be 'true' or 'false' (string)
-                    correct_ans_str = row['correct_answer'].strip().lower()
+                    correct_ans_str = row.get('correct_answer', '').strip().lower()
                     if correct_ans_str not in ('true', 'false'):
                         raise ValueError("True/False 'correct_answer' must be 'true' or 'false'.")
                     question_data['correctAnswer'] = correct_ans_str == 'true'
@@ -51,55 +50,63 @@ def load_questions_from_csv(file_path):
                         raise ValueError(
                             f"Drag-and-drop question 'options' field malformed. Expected 3 parts separated by ';', got {len(parts)}.")
 
-                    # Helper to parse sub-items like "id:text|id:text"
                     def parse_id_text_list(raw_list_str, field_name):
                         parsed_items = []
-                        if not raw_list_str:  # Handle case of empty sub-list
+                        if not raw_list_str:
                             return parsed_items
                         for item_str in raw_list_str.split('|'):
                             if ':' not in item_str:
                                 raise ValueError(
                                     f"Drag-and-drop '{field_name}' item '{item_str}' is malformed. Missing ':'.")
                             item_id, item_text = item_str.split(':', 1)
-                            if not item_id or not item_text:  # Basic check for empty ID/text
+                            if not item_id or not item_text:
                                 raise ValueError(
                                     f"Drag-and-drop '{field_name}' item '{item_str}' has empty ID or text.")
                             parsed_items.append({"id": item_id, "text": item_text})
                         return parsed_items
 
-                    # Parse draggable items
                     question_data['draggableItems'] = parse_id_text_list(parts[0], 'draggable_items')
-
-                    # Parse droppable targets
                     question_data['droppableTargets'] = parse_id_text_list(parts[1], 'droppable_targets')
 
-                    # Parse correct mapping
                     correct_mapping_raw = parts[2]
                     question_data['correctMapping'] = {}
-                    if not correct_mapping_raw:  # Handle empty mapping list
+                    if not correct_mapping_raw:
                         raise ValueError("Drag-and-drop 'correctMapping' field is empty.")
                     for mapping_str in correct_mapping_raw.split('|'):
                         if ':' not in mapping_str:
                             raise ValueError(f"Drag-and-drop mapping '{mapping_str}' is malformed. Missing ':'.")
                         draggable_id, droppable_id = mapping_str.split(':', 1)
-                        if not draggable_id or not droppable_id:  # Basic check for empty ID/target ID
+                        if not draggable_id or not droppable_id:
                             raise ValueError(
                                 f"Drag-and-drop mapping '{mapping_str}' has empty draggable or droppable ID.")
                         question_data['correctMapping'][draggable_id] = droppable_id
 
+                elif row['type'] == 'fill_in_the_blank':
+                    question_data['placeholderText'] = row.get('options', '')  # Using options column for placeholder
+                    question_data['correctAnswer'] = row.get('correct_answer', '')
+                    if not question_data['correctAnswer']:
+                        raise ValueError("Fill in the blank question is missing 'correct_answer'.")
+
+                elif row['type'] == 'trace_the_output':
+                    question_data['codeSnippet'] = row.get('options', '')  # Using options column for code snippet
+                    question_data['correctOutput'] = row.get('correct_answer', '')
+                    if not question_data['codeSnippet'] or not question_data['correctOutput']:
+                        raise ValueError("Trace the output question is missing 'code_snippet' or 'correct_output'.")
+
+                elif row['type'] == 'write_full_code':
+                    # 'options' column is not used for this type
+                    question_data['correctCodeSolution'] = row.get('correct_answer',
+                                                                   '')  # Using correct_answer for solution code
+                    if not question_data['correctCodeSolution']:
+                        raise ValueError("Write full code question is missing 'correct_code_solution'.")
+
                 questions.append(question_data)
             except KeyError as e:
                 print(f"Error: Missing column '{e}' in row {line_num} of questions.csv. Row: {row}")
-                # Continue to next row even if a column is missing
-                continue
             except ValueError as e:
                 print(f"Error parsing question on line {line_num} (ID: {row.get('id', 'N/A')}): {e}. Row: {row}")
-                # Continue to next row for malformed data
-                continue
             except Exception as e:
-                # Catch any other unexpected error during row processing
                 print(f"Unexpected error processing row {line_num} (ID: {row.get('id', 'N/A')}): {e}. Row: {row}")
-                continue
     return questions
 
 
@@ -121,8 +128,8 @@ except FileNotFoundError:
     print(f"\n--- CRITICAL ERROR ---")
     print(f"questions.csv not found at {QUESTIONS_FILE}.")
     print("Please ensure the 'questions.csv' file is in the same directory as 'app.py'.\n")
-    ALL_QUIZ_QUESTIONS = []  # Initialize as empty to prevent app crash
-except Exception as e:  # Catch any other unexpected error during file opening or initial setup
+    ALL_QUIZ_QUESTIONS = []
+except Exception as e:
     print(f"\n--- CRITICAL ERROR during initial loading of questions.csv: {e} ---\n")
     ALL_QUIZ_QUESTIONS = []
 
@@ -142,7 +149,6 @@ def get_questions():
     num_questions_str = request.args.get('count', type=str)
 
     if not ALL_QUIZ_QUESTIONS:
-        # If questions were not loaded successfully during startup, return a 500 error here.
         return jsonify(
             {"error": "No questions loaded. Check server logs for specific parsing errors during startup."}), 500
 
@@ -151,18 +157,15 @@ def get_questions():
         if num_questions <= 0:
             return jsonify({"error": "Number of questions must be positive."}), 400
 
-        # Shuffle questions and select the requested number
         shuffled_questions = random.sample(ALL_QUIZ_QUESTIONS, min(num_questions, len(ALL_QUIZ_QUESTIONS)))
         return jsonify(shuffled_questions)
     else:
-        # If no count specified, return all questions
         return jsonify(ALL_QUIZ_QUESTIONS)
 
 
 if __name__ == '__main__':
-    # Ensure the static and templates directories exist for Flask to find them
-    # These are usually created manually or by a build script, but good for robustness
     os.makedirs(os.path.join(BASE_DIR, 'templates'), exist_ok=True)
     os.makedirs(os.path.join(BASE_DIR, 'static', 'css'), exist_ok=True)
     os.makedirs(os.path.join(BASE_DIR, 'static', 'js'), exist_ok=True)
+    os.makedirs(os.path.join(BASE_DIR, 'static', 'images'), exist_ok=True)  # Ensure images folder exists
     app.run(debug=True)

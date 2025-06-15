@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const appRoot = document.getElementById('app-root');
     let allQuestions = []; // All questions fetched from the backend
     let currentQuestions = []; // Questions selected for the current quiz round
-    let userAnswers = []; // Stores user's selected answers
+    let userAnswers = []; // Stores user's selected answers (answer for each question)
     let currentQuestionIndex = 0;
     let quizStarted = false;
     let showResults = false;
@@ -56,6 +56,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return svg;
     }
 
+    // Function to render math using KaTeX
+    function renderMath(element) {
+        if (typeof renderMathInElement !== 'undefined') {
+            renderMathInElement(element, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ]
+            });
+        } else {
+            console.warn("KaTeX auto-render script not loaded. Math equations might not display correctly.");
+        }
+    }
+
 
     // --- State Management and Rendering Functions ---
 
@@ -69,6 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (showResults) {
             renderResults();
         }
+        // After rendering content, trigger KaTeX to render math
+        // This needs to be called after the HTML elements are in the DOM
+        renderMath(appRoot);
     }
 
     function renderStartScreen() {
@@ -76,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         startScreenDiv.className = 'text-center';
         startScreenDiv.innerHTML = `
             <p class="text-lg mb-6 text-gray-700">
-                Test your knowledge on Relational Algebra, Database Security, and Normalization!
+                Test your knowledge on Java concepts from the course materials!
             </p>
             <div class="mb-6">
                 <label for="numQuestions" class="block text-lg font-medium text-gray-700 mb-2">
@@ -120,7 +139,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
         currentQuestions = shuffled.slice(0, numQuestionsToAsk);
         currentQuestionIndex = 0;
-        userAnswers = Array(currentQuestions.length).fill(null); // Initialize user answers for each question
+        // Initialize userAnswers with nulls for each question, or proper empty state for complex types
+        userAnswers = currentQuestions.map(q => {
+            if (q.type === 'drag_drop') {
+                return {}; // Initialize drag_drop answers as empty objects
+            } else if (q.type === 'fill_in_the_blank' || q.type === 'trace_the_output' || q.type === 'write_full_code') {
+                return ''; // Initialize text inputs as empty strings
+            }
+            return null; // Default for MCQ, True/False
+        });
         quizStarted = true;
         showResults = false;
         renderApp();
@@ -145,14 +172,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const questionText = document.createElement('p');
         questionText.className = 'text-2xl font-bold mb-4 text-gray-900 leading-relaxed';
-        questionText.textContent = currentQuestion.question;
+        questionText.textContent = currentQuestion.question; // KaTeX will render the math directly from this textContent
         quizDiv.appendChild(questionText);
 
         const answerArea = document.createElement('div');
         answerArea.className = 'space-y-3';
         quizDiv.appendChild(answerArea);
 
-        // Render question type
+        // Render question type specific input
         if (currentQuestion.type === 'mcq') {
             currentQuestion.options.forEach((option, index) => {
                 const label = document.createElement('label');
@@ -193,7 +220,50 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } else if (currentQuestion.type === 'drag_drop') {
             renderDragDropQuestion(answerArea, currentQuestion);
+        } else if (currentQuestion.type === 'fill_in_the_blank') {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = currentQuestion.placeholderText || 'Type your answer here';
+            input.value = userAnswers[currentQuestionIndex] || '';
+            input.className = 'w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-gray-800';
+            input.addEventListener('input', (e) => {
+                userAnswers[currentQuestionIndex] = e.target.value;
+            });
+            answerArea.appendChild(input);
+        } else if (currentQuestion.type === 'trace_the_output' || currentQuestion.type === 'write_full_code') {
+            // Code snippet display
+            if (currentQuestion.codeSnippet) {
+                const codePre = document.createElement('pre');
+                const code = document.createElement('code');
+                code.textContent = currentQuestion.codeSnippet;
+                codePre.appendChild(code);
+                answerArea.appendChild(codePre);
+            } else if (currentQuestion.type === 'write_full_code') {
+                // Placeholder for write_full_code if no snippet is provided
+                const codePre = document.createElement('pre');
+                const code = document.createElement('code');
+                code.textContent = "// Write your code here (e.g., a JavaFX class)";
+                codePre.appendChild(code);
+                answerArea.appendChild(codePre);
+            }
+
+
+            const label = document.createElement('label');
+            label.className = 'block text-lg font-medium text-gray-700 mt-4 mb-2';
+            label.textContent = currentQuestion.type === 'trace_the_output' ? 'Your Output:' : 'Your Code:';
+            answerArea.appendChild(label);
+
+            const responseInput = document.createElement('textarea');
+            responseInput.className = 'w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-gray-800 resize-y';
+            responseInput.rows = currentQuestion.type === 'trace_the_output' ? 5 : 15;
+            responseInput.placeholder = currentQuestion.type === 'trace_the_output' ? 'Type the exact output here...' : 'Write your full code here...';
+            responseInput.value = userAnswers[currentQuestionIndex] || '';
+            responseInput.addEventListener('input', (e) => {
+                userAnswers[currentQuestionIndex] = e.target.value;
+            });
+            answerArea.appendChild(responseInput);
         }
+
 
         const navButtons = document.createElement('div');
         navButtons.className = 'flex justify-between mt-8';
@@ -243,10 +313,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentMapping = userAnswers[currentQuestionIndex] || {};
         let draggedItem = null;
 
-        // Helper to update mapping and re-render only the drag/drop part
         const updateMappingAndRender = () => {
             userAnswers[currentQuestionIndex] = currentMapping;
-            renderApp(); // Full re-render for simplicity in this example
+            renderApp();
         };
 
         question.draggableItems.forEach(item => {
@@ -279,7 +348,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${Object.values(currentMapping).includes(target.id) ? 'bg-green-100 border-green-400 mapped' : 'bg-gray-100 border-gray-300 hover:bg-gray-200'}
             `;
 
-            // Check if a draggable item is currently mapped to this target
             const mappedDraggableId = Object.keys(currentMapping).find(key => currentMapping[key] === target.id);
             if (mappedDraggableId) {
                 const mappedDraggableText = question.draggableItems.find(d => d.id === mappedDraggableId)?.text;
@@ -300,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
             droppableDiv.addEventListener('dragover', (e) => {
-                e.preventDefault(); // Prevent default to allow drop
+                e.preventDefault();
                 droppableDiv.classList.add('drag-over');
             });
 
@@ -313,7 +381,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 droppableDiv.classList.remove('drag-over');
                 const droppedDraggableId = e.dataTransfer.getData('text/plain');
 
-                // If this target is already mapped, remove the old mapping first
                 const existingMappedDraggableId = Object.keys(currentMapping).find(key => currentMapping[key] === target.id);
                 const newMap = { ...currentMapping };
 
@@ -321,7 +388,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     delete newMap[existingMappedDraggableId];
                 }
 
-                // If the item being dragged is already mapped somewhere else, unmap it first
                 const currentTargetOfDraggedItem = newMap[droppedDraggableId];
                 if (currentTargetOfDraggedItem) {
                     const draggableToUnmap = Object.keys(newMap).find(key => newMap[key] === currentTargetOfDraggedItem && key !== droppedDraggableId);
@@ -383,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
             userAnswerP.innerHTML = `<span class="font-semibold">Your Answer: </span>`;
 
             const userAnswerSpan = document.createElement('span');
-            userAnswerSpan.className = `${result.isCorrect ? 'text-green-600' : 'text-red-600'} font-medium`;
+            userAnswerSpan.className = `${result.isCorrect ? 'text-green-600' : 'text-red-600'} font-medium whitespace-pre-wrap break-words`; // Added whitespace-pre-wrap for code
             userAnswerSpan.textContent = displayUserAnswer(result.question, result.userAnswer);
             userAnswerP.appendChild(userAnswerSpan);
 
@@ -394,12 +460,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             questionResultDiv.appendChild(userAnswerP);
 
-            if (!result.isCorrect) {
+            // Display correct answer if not correct or for specific types
+            if (!result.isCorrect || result.question.type === 'trace_the_output' || result.question.type === 'write_full_code') {
                 const correctAnswerP = document.createElement('p');
                 correctAnswerP.className = 'text-lg mb-2';
                 correctAnswerP.innerHTML = `<span class="font-semibold">Correct Answer: </span>`;
                 const correctAnswerSpan = document.createElement('span');
-                correctAnswerSpan.className = 'text-green-600 font-medium';
+                correctAnswerSpan.className = 'text-green-600 font-medium whitespace-pre-wrap break-words'; // Added whitespace-pre-wrap for code
                 correctAnswerSpan.textContent = displayCorrectAnswer(result.question);
                 correctAnswerP.appendChild(correctAnswerSpan);
                 questionResultDiv.appendChild(correctAnswerP);
@@ -420,15 +487,6 @@ document.addEventListener('DOMContentLoaded', () => {
         appRoot.appendChild(resultsDiv);
     }
 
-    function handleRetakeQuiz() {
-        quizStarted = false;
-        showResults = false;
-        userAnswers = [];
-        currentQuestions = [];
-        currentQuestionIndex = 0;
-        renderApp();
-    }
-
     function evaluateQuiz() {
         let score = 0;
         const results = currentQuestions.map((q, index) => {
@@ -442,9 +500,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (q.type === 'drag_drop') {
                 let allMatched = true;
                 const correctMappingKeys = Object.keys(q.correctMapping);
-                const userMappedKeys = Object.keys(userAnswer || {}); // Ensure userAnswer is an object
+                const userMappedKeys = Object.keys(userAnswer || {});
 
-                // Check if all correct mappings are present and correct in user's answer
                 if (correctMappingKeys.length !== userMappedKeys.length) {
                     allMatched = false;
                 } else {
@@ -456,7 +513,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 isCorrect = allMatched;
+            } else if (q.type === 'fill_in_the_blank') {
+                // Case-insensitive and trim whitespace for fill in the blank
+                isCorrect = (userAnswer || '').trim().toLowerCase() === (q.correctAnswer || '').trim().toLowerCase();
+            } else if (q.type === 'trace_the_output') {
+                // Case-sensitive, whitespace-sensitive for code output
+                isCorrect = (userAnswer || '').trim() === (q.correctOutput || '').trim();
+            } else if (q.type === 'write_full_code') {
+                // For write_full_code, a simple equality check is unlikely to work for full code.
+                // For this example, we'll mark as correct if the user provided *any* non-empty input.
+                // In a real scenario, you'd implement a more sophisticated comparison (e.g., compile & run, or AST comparison).
+                isCorrect = (userAnswer || '').trim().length > 0; // Simplified: just check if they wrote something
             }
+
 
             if (isCorrect) {
                 score++;
@@ -473,7 +542,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayUserAnswer(question, answer) {
-        if (answer === null || answer === undefined) return 'No answer provided';
+        if (answer === null || answer === undefined || answer === '') {
+            return 'No answer provided';
+        }
 
         if (question.type === 'mcq') {
             return question.options[answer];
@@ -486,6 +557,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return `${draggableText} → ${droppableText}`;
             });
             return mappedItems.length > 0 ? mappedItems.join(', ') : 'No items mapped';
+        } else if (question.type === 'fill_in_the_blank') {
+            return answer;
+        } else if (question.type === 'trace_the_output') {
+            return answer;
+        } else if (question.type === 'write_full_code') {
+            // For display, just return the user's code.
+            return answer;
         }
         return String(answer);
     }
@@ -502,6 +580,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return `${draggableText} → ${droppableText}`;
             });
             return correctMappedItems.join(', ');
+        } else if (question.type === 'fill_in_the_blank') {
+            return question.correctAnswer;
+        } else if (question.type === 'trace_the_output') {
+            return question.correctOutput;
+        } else if (question.type === 'write_full_code') {
+            // Display the model solution code
+            return question.correctCodeSolution;
         }
         return '';
     }
